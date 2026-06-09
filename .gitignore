@@ -32,3 +32,5 @@ testbot/build
 log.txt
 
 output/
+
+.codegraph/
