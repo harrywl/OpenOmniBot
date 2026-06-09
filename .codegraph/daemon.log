@@ -1,0 +1,12 @@
+[CodeGraph daemon] Another daemon (pid 20978) already holds the lock; exiting.
+[CodeGraph daemon] Listening on /Users/nimijygur/VSC_Projects/OpenOmniBot/.codegraph/daemon.sock (pid 20978, v0.9.9). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Auto-synced 1 file(s) in 455ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 210ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 117ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 120ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 154ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 114ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 108ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 139ms
+[CodeGraph MCP] Auto-synced 4 file(s) in 396ms

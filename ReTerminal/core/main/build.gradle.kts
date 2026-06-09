@@ -20,8 +20,8 @@ val gitCommitDate: Provider<String> =
     providers.exec { commandLine("git", "show", "-s", "--format=%cI", "HEAD") }.standardOutput.asText.map { it.trim() }
 
 val termuxPackageBaseUrl = "https://packages.termux.dev/apt/termux-main"
-val prootDebUrl = "$termuxPackageBaseUrl/pool/main/p/proot/proot_5.1.107.76_aarch64.deb"
-val prootDebChecksum = "390891fe974985e06fa42693cbbc82742d7c5d681eb7534cd5e0497f2836cd9f"
+val prootDebUrl = "$termuxPackageBaseUrl/pool/main/p/proot/proot_5.1.107.77_aarch64.deb"
+val prootDebChecksum = "f2cd07bafbebf625c62931994120d469934a8925a831f6e049bb08f91889a00d"
 val libtallocDebUrl = "$termuxPackageBaseUrl/pool/main/libt/libtalloc/libtalloc_2.4.3_aarch64.deb"
 val libtallocDebChecksum = "ac81ad623d74c209718b9f3acb2dd702cc8a88c431e820d212229910b4db29da"
 val alpineMiniRootfsUrl =
