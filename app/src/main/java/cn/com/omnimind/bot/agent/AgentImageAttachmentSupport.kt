@@ -612,6 +612,12 @@ internal object AgentImageAttachmentSupport {
      * 缩放 max(w,h)<=1024, JPEG quality=85, 采样解码防大图 OOM, 缓存 32 张, 限流 500ms, 重试 3 次
      */
     internal suspend fun describeImageViaVlm(imageDataUrl: String): String {
+        val urlType = when {
+            imageDataUrl.startsWith("data:") -> "dataURL"
+            imageDataUrl.startsWith("http://") || imageDataUrl.startsWith("https://") -> "httpURL"
+            else -> "raw"
+        }
+        OmniLog.w(TAG, "describeImageViaVlm 进入: dataUrl类型=$urlType, 长度=${imageDataUrl.length}, 前缀=${imageDataUrl.take(80)}...")
         // ★ 远程 URL 需要先下载转 base64
         val dataUrlForVlm = if (imageDataUrl.startsWith("http://") || imageDataUrl.startsWith("https://")) {
             try {
@@ -651,7 +657,13 @@ internal object AgentImageAttachmentSupport {
                         )
                     )
                 }
-                val vlmResult = result.message.ifBlank { "（VLM 返回空描述）" }
+                val rawMessage = result.message
+                val vlmResult = rawMessage.ifBlank { "（VLM 返回空描述）" }
+                if (rawMessage.isBlank()) {
+                    OmniLog.w(TAG, "describeImageViaVlm: VLM返回空消息! resultBean.message='${rawMessage}', fallback='${vlmResult}'")
+                } else {
+                    OmniLog.w(TAG, "describeImageViaVlm 结果: 长度=${vlmResult.length}, 前200字=${vlmResult.take(200)}")
+                }
                 synchronized(vlmDescriptionCache) {
                     if (vlmDescriptionCache.size >= 32) {
                         vlmDescriptionCache.remove(vlmDescriptionCache.keys.first())

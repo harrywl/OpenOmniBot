@@ -2035,11 +2035,15 @@ object HttpController {
             responseParser = ModelSceneRegistry.ResponseParser.TEXT_CONTENT
         )
         logSceneProfile(textResolved)
+        // ★ 调试: 输出 VLM 请求的路由信息
+        OmniLog.w(TAG, "postVLMDescriptionRequest: sceneId=$sceneId resolvedModel=${textResolved.resolvedModel} apiBase=${textResolved.apiBase} apiKey存在=${!textResolved.apiKey.isNullOrBlank()} bindingApplied=${textResolved.bindingApplied} transport=${textResolved.effectiveTransport}")
+        OmniLog.w(TAG, "postVLMDescriptionRequest: 图片数量=${payload.images.size}, 首张图片长度=${payload.images.firstOrNull()?.length ?: 0}, 首张前缀=${payload.images.firstOrNull()?.take(80) ?: "(无)"}")
         val response = postSceneChatCompletionInternal(
             resolved = textResolved,
             request = createChatRequestFromVlmPayload(textResolved, payload),
             retryOnBadRequest = false
         )
+        OmniLog.w(TAG, "postVLMDescriptionRequest 结果: success=${response.success} content_len=${response.content.length} content_preview=${response.content.take(200)}")
         return@withContext ResultBean(response.content.ifBlank { response.message })
     }
 
@@ -2225,13 +2229,51 @@ object HttpController {
                 )
             }
 
+            val originalJson = completionJson.encodeToString(variant.request)
             val requestJson = buildOpenAICompatibleRequestBody(
-                requestBodyJson = completionJson.encodeToString(variant.request),
+                requestBodyJson = originalJson,
                 resolvedModel = variant.request.model,
                 includeLegacyMirrors = false,
                 protocolType = resolved.protocolType,
                 apiBase = base
             )
+            // ★ VLM 调试: 对比原始序列化与 transform 后的 JSON 中 image_url/base64 数据完整性
+            val isVlmRequest = variant.request.messages.any { msg ->
+                val content = msg.content
+                content is KxJsonArray && content.any { elem ->
+                    val obj = elem as? KxJsonObject
+                    obj?.get("type")?.toString()?.contains("image_url") == true
+                }
+            }
+            if (isVlmRequest) {
+                val originalContentMatch = Regex("\"url\"\\s*:\\s*\"(data:image/[^\"]+)\"").find(originalJson)
+                val transformedContentMatch = Regex("\"url\"\\s*:\\s*\"(data:image/[^\"]+)\"").find(requestJson)
+                val origBase64Len = originalContentMatch?.groupValues?.getOrNull(1)?.length ?: 0
+                val transBase64Len = transformedContentMatch?.groupValues?.getOrNull(1)?.length ?: 0
+                val origUrl = originalContentMatch?.groupValues?.getOrNull(1).orEmpty()
+                val transUrl = transformedContentMatch?.groupValues?.getOrNull(1).orEmpty()
+                OmniLog.w(TAG, "=== VLM Request Integrity Check ===")
+                OmniLog.w(TAG, "Original base64 dataUrl length: $origBase64Len")
+                OmniLog.w(TAG, "Transformed base64 dataUrl length: $transBase64Len")
+                OmniLog.w(TAG, "DataUrl prefix match: orig=${origUrl.take(50)}... trans=${transUrl.take(50)}...")
+                OmniLog.w(TAG, "DataUrl suffix match: orig=...${origUrl.takeLast(20)} trans=...${transUrl.takeLast(20)}")
+                if (origBase64Len != transBase64Len) {
+                    OmniLog.e(TAG, "❌ base64 dataUrl 长度不匹配！原始=$origBase64Len 转换后=$transBase64Len")
+                } else if (origUrl != transUrl) {
+                    OmniLog.e(TAG, "❌ base64 dataUrl 内容改变！")
+                } else {
+                    OmniLog.w(TAG, "✅ base64 dataUrl 完整保留")
+                }
+                // 同时检查 messages[0].content 的 JSON 结构完整性
+                val origHasArray = originalJson.contains("\"content\"\\s*:")
+                val transHasArray = requestJson.contains("\"content\"\\s*:")
+                OmniLog.w(TAG, "Has 'content' key: orig=$origHasArray trans=$transHasArray")
+                OmniLog.w(TAG, "Original JSON (first 1500): ${originalJson.take(1500)}")
+                OmniLog.w(TAG, "Transformed JSON (first 1500): ${requestJson.take(1500)}")
+                OmniLog.w(TAG, "Original JSON (last 500): ...${originalJson.takeLast(500)}")
+                OmniLog.w(TAG, "Transformed JSON (last 500): ...${requestJson.takeLast(500)}")
+                OmniLog.w(TAG, "======================================")
+            }
             OmniLog.d(TAG, "=== OpenAI Request Debug ===")
             OmniLog.d(TAG, "URL: $url")
             OmniLog.d(TAG, "Model: ${variant.request.model}, hasApiKey=${!resolved.apiKey.isNullOrBlank()}, variant=${variant.name}")
@@ -2543,6 +2585,11 @@ object HttpController {
                     "reasoning_len=${reasoning.length}, tool_calls=${toolCalls.size}, " +
                     "finish=$finishReason, content_preview=${content.take(200)}"
             )
+            // ★ VLM 调试: 如果 content 为空但 HTTP 200, 检查原始响应结构
+            if (content.isBlank() && finishReason == "stop") {
+                val rawPreview = response?.take(500).orEmpty()
+                OmniLog.w(TAG, "[vlm] content为空但finish=stop, rawResponse前500字: $rawPreview")
+            }
 
             SceneChatCompletionResponse(
                 success = true,

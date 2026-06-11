@@ -411,6 +411,8 @@ class OmniAgentExecutor(
             if (rawText.isNotBlank()) "$rawText\n\n$descriptionText" else descriptionText
         } else rawText
 
+        OmniLog.w(tag, "buildCurrentUserMessage: rawText_len=${rawText.length}, vlmDescriptions_count=${vlmDescriptions.size}, combinedText_len=${combinedText.length}, combinedText_preview=${combinedText.take(300)}")
+
         val content: JsonElement = JsonPrimitive(combinedText)
         return cn.com.omnimind.baselib.llm.ChatCompletionMessage(
             role = "user",
